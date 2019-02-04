@@ -192,6 +192,4 @@ obj-$(CONFIG_TRUSTY)		+= trusty/
 # GNSS driver
 obj-$(CONFIG_GNSS_SIRF)		+= gnsssirf/
 obj-$(CONFIG_GNSS)		+= gnss/
-# DTS_EAGLE START
 obj-$(CONFIG_AINUR_DTS_SW) += dts_eagle/
-# DTS_EAGLE END
