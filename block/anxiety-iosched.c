@@ -13,10 +13,10 @@
 #include <linux/init.h>
 
 /* Batch this many synchronous requests at a time */
-#define	DEFAULT_SYNC_RATIO	(4)
+#define	DEFAULT_SYNC_RATIO	(8)
 
 /* Run each batch this many times*/
-#define DEFAULT_BATCH_COUNT	(2)
+#define DEFAULT_BATCH_COUNT	(4)
 
 struct anxiety_data {
 	struct list_head sync_queue;
@@ -224,7 +224,7 @@ static struct elv_fs_entry anxiety_attrs[] = {
 };
 
 static struct elevator_type elevator_anxiety = {
-	.ops = {
+	.ops.sq = {
 		.elevator_merge_req_fn	= anxiety_merged_requests,
 		.elevator_dispatch_fn	= anxiety_dispatch,
 		.elevator_add_req_fn	= anxiety_add_request,
