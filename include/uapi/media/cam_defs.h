@@ -29,6 +29,9 @@
 #define CAM_UPDATE_REG                          (CAM_EXT_OPCODE_BASE + 0x2)
 #define CAM_READ_REG                            (CAM_EXT_OPCODE_BASE + 0x3)
 
+#define CAM_UPDATE_REG                          (CAM_EXT_OPCODE_BASE + 0x2)
+#define CAM_READ_REG                            (CAM_EXT_OPCODE_BASE + 0x3)
+
 /* camera handle type */
 #define CAM_HANDLE_USER_POINTER                 1
 #define CAM_HANDLE_MEM_HANDLE                   2
