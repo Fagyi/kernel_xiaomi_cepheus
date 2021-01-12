@@ -2114,15 +2114,16 @@ static int sde_kms_set_crtc_for_conn(struct drm_device *dev,
 	crtc_state = drm_atomic_get_crtc_state(state, enc->crtc);
 	conn_state = drm_atomic_get_connector_state(state, conn);
 	if (IS_ERR(conn_state)) {
-		SDE_ERROR("error %d getting connector %d state\n",
-				ret, DRMID(conn));
+		SDE_ERROR("error %ld getting crtc %d state\n",
+			  PTR_ERR(crtc_state), DRMID(conn));
 		return -EINVAL;
 	}
 
 	crtc_state->active = true;
 	ret = drm_atomic_set_crtc_for_connector(conn_state, enc->crtc);
 	if (ret)
-		SDE_ERROR("error %d setting the crtc\n", ret);
+		SDE_ERROR("error %d setting crtc for connector %d\n", ret,
+			  DRMID(conn));
 
 	_sde_crtc_clear_dim_layers_v1(crtc_state);
 
@@ -2881,7 +2882,12 @@ retry:
 	if (ret)
 		goto end;
 
-	drm_atomic_commit(state);
+	ret = drm_atomic_commit(state);
+	if (ret) {
+		SDE_ERROR("error %d committing state for connector %d\n", ret,
+			  DRMID(conn));
+		goto end;
+	}
 end:
 	if (state)
 		drm_atomic_state_put(state);
