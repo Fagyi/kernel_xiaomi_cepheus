@@ -237,4 +237,6 @@ source "techpack/data/drivers/Kconfig"
 
 source "drivers/dts_eagle/Kconfig"
 
+source "drivers/energy_model/Kconfig"
+
 endmenu
