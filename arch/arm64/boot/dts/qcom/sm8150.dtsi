@@ -558,7 +558,7 @@
 	};
 
 	chosen {
-		bootargs = "norandmaps nodebugmon rcupdate.rcu_expedited=1 rcu_nocbs=0-7 cgroup.memory=nokmem,nosocket noirqdebug";
+		bootargs = "norandmaps nodebugmon rcupdate.rcu_expedited=1 rcu_nocbs=0-7 cgroup.memory=nokmem,nosocket noirqdebug kpti=off";
 	};
 
 	soc: soc { };
