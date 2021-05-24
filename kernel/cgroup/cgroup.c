@@ -4752,6 +4752,7 @@ static struct cftype cgroup_base_files[] = {
 #ifdef CONFIG_PSI
 	{
 		.name = "io.pressure",
+		.flags = CFTYPE_PRESSURE,
 		.seq_show = cgroup_io_pressure_show,
 		.write = cgroup_io_pressure_write,
 		.poll = cgroup_pressure_poll,
@@ -4759,6 +4760,7 @@ static struct cftype cgroup_base_files[] = {
 	},
 	{
 		.name = "memory.pressure",
+		.flags = CFTYPE_PRESSURE,
 		.seq_show = cgroup_memory_pressure_show,
 		.write = cgroup_memory_pressure_write,
 		.poll = cgroup_pressure_poll,
@@ -4766,6 +4768,7 @@ static struct cftype cgroup_base_files[] = {
 	},
 	{
 		.name = "cpu.pressure",
+		.flags = CFTYPE_PRESSURE,
 		.seq_show = cgroup_cpu_pressure_show,
 		.write = cgroup_cpu_pressure_write,
 		.poll = cgroup_pressure_poll,
@@ -6238,6 +6241,9 @@ static ssize_t show_delegatable_files(struct cftype *files, char *buf,
 
 	for (cft = files; cft && cft->name[0] != '\0'; cft++) {
 		if (!(cft->flags & CFTYPE_NS_DELEGATABLE))
+			continue;
+
+		if ((cft->flags & CFTYPE_PRESSURE) && !cgroup_psi_enabled())
 			continue;
 
 		if (prefix)
