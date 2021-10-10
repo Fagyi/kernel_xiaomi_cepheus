@@ -208,12 +208,53 @@ static int proc_root_link(struct dentry *dentry, struct path *path)
 	return result;
 }
 
+/*
+ * If the user used setproctitle(), we just get the string from
+ * user space at arg_start, and limit it to a maximum of one page.
+ */
+static ssize_t get_mm_proctitle(struct mm_struct *mm, char __user *buf,
+				size_t count, unsigned long pos,
+				unsigned long arg_start)
+{
+	char *page;
+	int ret, got;
+
+	if (pos >= PAGE_SIZE)
+		return 0;
+
+	page = (char *)__get_free_page(GFP_KERNEL);
+	if (!page)
+		return -ENOMEM;
+
+	ret = 0;
+	got = access_remote_vm(mm, arg_start, page, PAGE_SIZE, FOLL_ANON);
+	if (got > 0) {
+		int len = strnlen(page, got);
+
+		/* Include the NUL character if it was found */
+		if (len < got)
+			len++;
+
+		if (len > pos) {
+			len -= pos;
+			if (len > count)
+				len = count;
+			len -= copy_to_user(buf, page+pos, len);
+			if (!len)
+				len = -EFAULT;
+			ret = len;
+		}
+	}
+	free_page((unsigned long)page);
+	return ret;
+}
+
 static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 			      size_t count, loff_t *ppos)
 {
 	unsigned long arg_start, arg_end, env_start, env_end;
 	unsigned long pos, len;
-	char *page;
+	char *page, c;
 
 	/* Check if process spawned far enough to have cmdline. */
 	if (!mm->env_end)
@@ -230,24 +271,42 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 		return 0;
 
 	/*
-	 * We have traditionally allowed the user to re-write
-	 * the argument strings and overflow the end result
-	 * into the environment section. But only do that if
-	 * the environment area is contiguous to the arguments.
+	 * We allow setproctitle() to overwrite the argument
+	 * strings, and overflow past the original end. But
+	 * only when it overflows into the environment area.
 	 */
-	if (env_start != arg_end || env_start >= env_end)
+	if (env_start != arg_end || env_end < env_start)
 		env_start = env_end = arg_end;
+	len = env_end - arg_start;
 
 	/* We're not going to care if "*ppos" has high bits set */
-	pos = arg_start + *ppos;
-
-	/* .. but we do check the result is in the proper range */
-	if (pos < arg_start || pos >= env_end)
+	pos = *ppos;
+	if (pos >= len)
+		return 0;
+	if (count > len - pos)
+		count = len - pos;
+	if (!count)
 		return 0;
 
-	/* .. and we never go past env_end */
-	if (env_end - pos < count)
-		count = env_end - pos;
+	/*
+	 * Magical special case: if the argv[] end byte is not
+	 * zero, the user has overwritten it with setproctitle(3).
+	 *
+	 * Possible future enhancement: do this only once when
+	 * pos is 0, and set a flag in the 'struct file'.
+	 */
+	if (access_remote_vm(mm, arg_end-1, &c, 1, FOLL_ANON) == 1 && c)
+		return get_mm_proctitle(mm, buf, count, pos, arg_start);
+
+	/*
+	 * For the non-setproctitle() case we limit things strictly
+	 * to the [arg_start, arg_end[ range.
+	 */
+	pos += arg_start;
+	if (pos < arg_start || pos >= arg_end)
+		return 0;
+	if (count > arg_end - pos)
+		count = arg_end - pos;
 
 	page = (char *)__get_free_page(GFP_KERNEL);
 	if (!page)
@@ -261,29 +320,6 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 		got = access_remote_vm(mm, pos, page, size, FOLL_ANON);
 		if (got <= 0)
 			break;
-
-		/* Don't walk past a NUL character once you hit arg_end */
-		if (pos + got >= arg_end) {
-			int n = 0;
-
-			/*
-			 * If we started before 'arg_end' but ended up
-			 * at or after it, we start the NUL character
-			 * check at arg_end-1 (where we expect the normal
-			 * EOF to be).
-			 *
-			 * NOTE! This is smaller than 'got', because
-			 * pos + got >= arg_end
-			 */
-			if (pos < arg_end)
-				n = arg_end - pos - 1;
-
-			/* Cut off at first NUL after 'n' */
-			got = n + strnlen(page+n, got-n);
-			if (!got)
-				break;
-		}
-
 		got -= copy_to_user(buf, page, got);
 		if (unlikely(!got)) {
 			if (!len)
