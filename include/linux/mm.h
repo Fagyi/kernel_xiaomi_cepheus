@@ -1817,9 +1817,6 @@ static inline int __p4d_alloc(struct mm_struct *mm, pgd_t *pgd,
 {
 	return 0;
 }
-static inline void mm_inc_nr_puds(struct mm_struct *mm) {}
-static inline void mm_dec_nr_puds(struct mm_struct *mm) {}
-
 #else
 int __p4d_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address);
 #endif
