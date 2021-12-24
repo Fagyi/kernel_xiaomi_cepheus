@@ -7400,14 +7400,18 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 	unsigned long capacity = capacity_orig_of(cpu);
 	unsigned long max_capacity = cpu_rq(cpu)->rd->max_cpu_capacity.val;
 	unsigned long task_boost = per_task_boost(p);
+#if CONFIG_UCLAMP_TASK
+	int boosted = uclamp_boosted(p) > 0;
+#elif CONFIG_SCHED_TUNE
+	int boosted = schedtune_task_boost(p) > 0;
+#endif
 
 	if (capacity == max_capacity)
 		return true;
 
 	if (is_min_capacity_cpu(cpu)) {
 		if (task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
-			task_boost > 0 ||
-			schedtune_task_boost(p) > 0)
+			task_boost > 0 || boosted)
 			return false;
 	} else { /* mid cap cpu */
 		if (task_boost > 1)
@@ -8241,7 +8245,11 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	int placement_boost = task_boost_policy(p);
 	u64 start_t = 0;
 	int next_cpu = -1, backup_cpu = -1;
+#if CONFIG_UCLAMP_TASK
+	int boosted = (uclamp_boosted(p) > 0 || per_task_boost(p) > 0);
+#elif CONFIG_SCHED_TUNE
 	int boosted = (schedtune_task_boost(p) > 0 || per_task_boost(p) > 0);
+#endif
 
 	bool prefer_high_cap = schedtune_prefer_high_cap(p);
 	fbt_env.fastpath = 0;
@@ -8304,8 +8312,13 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		 * cannot be changed, it is safe to optimise out
 		 * all if(prefer_idle) blocks.
 		 */
+#if CONFIG_UCLAMP_TASK
+		prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
+				(uclamp_latency_sensitive(p) > 0) : 0;
+#elif CONFIG_SCHED_TUNE
 		prefer_idle = sched_feat(EAS_PREFER_IDLE) ?
 				(schedtune_prefer_idle(p) > 0) : 0;
+#endif
 
 		eenv->max_cpu_count = EAS_CPU_BKP + 1;
 
@@ -8391,6 +8404,11 @@ static inline int wake_energy(struct task_struct *p, int prev_cpu,
 {
 	struct sched_domain *sd = NULL;
 	int sync = wake_flags & WF_SYNC;
+#if CONFIG_UCLAMP_TASK
+	int prefer_idle = uclamp_latency_sensitive(p) > 0;
+#elif CONFIG_SCHED_TUNE
+	int prefer_idle = schedtune_prefer_idle(p) > 0;
+#endif
 
 	sd = rcu_dereference_sched(cpu_rq(prev_cpu)->sd);
 
@@ -8422,7 +8440,7 @@ static inline int wake_energy(struct task_struct *p, int prev_cpu,
 		 * Force prefer-idle tasks into the slow path, this may not happen
 		 * if none of the sd flags matched.
 		 */
-		if (schedtune_prefer_idle(p) > 0 && !sync)
+		if (prefer_idle && !sync)
 			return false;
 	}
 	return true;
