@@ -4007,7 +4007,7 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 	event_dispatch_handler_t event_handler;
 
 	if (info->tp_pm_suspend) {
-		logError(1, "%s device in suspend, schedue to work", tag);
+		// logError(1, "%s device in suspend, schedue to work", tag);
 		pm_wakeup_event(info->dev, 0);
 		if (!work_pending(&info->sleep_work)) {
 			pm_stay_awake(info->dev);
