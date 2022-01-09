@@ -27,8 +27,6 @@
 #include "cam_req_mgr_interface.h"
 #include "cam_context.h"
 
-#define TRACE_EVENT(x, ...)
-
 #define trace_cam_apply_req(x, ...)
 #define trace_cam_buf_done(x, ...)
 #define trace_cam_cdm_cb(x, ...)
