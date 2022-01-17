@@ -5831,7 +5831,9 @@ static inline bool
 cpu_is_in_target_set(struct task_struct *p, int cpu)
 {
 	struct root_domain *rd = cpu_rq(cpu)->rd;
-	int first_cpu, next_usable_cpu;
+	int first_cpu = (schedtune_prefer_high_cap(p)) ? rd->mid_cap_orig_cpu :
+							 rd->min_cap_orig_cpu;
+	int next_usable_cpu = cpumask_next(first_cpu - 1, &p->cpus_allowed);
 
 #ifdef CONFIG_SCHED_TUNE
 	if (schedtune_prefer_high_cap(p)) {
@@ -8529,11 +8531,8 @@ pick_cpu:
 			 * indicate that the selection algorithm from mid
 			 * capacity cpu should be used.
 			*/
-			int high_cap_cpu =
-			    cpu_rq(cpu)->rd->mid_cap_orig_cpu != -1 ?
-			     cpu_rq(cpu)->rd->mid_cap_orig_cpu :
-			     cpu_rq(cpu)->rd->max_cap_orig_cpu;
-			bool sync_boost = sync && cpu >= high_cap_cpu;
+			bool sync_boost = sync &&
+				      cpu >= cpu_rq(cpu)->rd->mid_cap_orig_cpu;
 
 			new_cpu = find_energy_efficient_cpu(energy_sd, p, cpu,
 						    prev_cpu, sync, sync_boost);
