@@ -3646,13 +3646,6 @@ static void mmdrop_async_free(struct work_struct *work)
 	__mmdrop(mm);
 }
 
-static void mmdrop_async_free(struct work_struct *work)
-{
-	struct mm_struct *mm = container_of(work, typeof(*mm), async_put_work);
-
-	__mmdrop(mm);
-}
-
 /**
  * finish_task_switch - clean up after a task-switch
  * @prev: the thread we just switched away from.
